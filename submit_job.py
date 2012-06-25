@@ -60,15 +60,15 @@ def generateConfig(path):
 conf_filename  = '.submit_job.cfg'
 conf_sect      = 'submit_job'
 conf_path      = None
-conf_paths     = (os.getenv("home"), sys.path[0])
+conf_paths     = (os.getenv("HOME"), sys.path[0])
 
 # Search for config file.
 for p in conf_paths:
    try_path = p + '/' + conf_filename
    
-   if os.path.exists(try_path):
+   if os.path.exists(try_path): 
       conf_path = try_path
-      break;
+      break
 
  
 if conf_path == None:
@@ -98,7 +98,7 @@ args = parser.parse_args()
 
 
 # I/O files
-jclPath     = args.JCLFile
+jclPath     = os.path.abspath(args.JCLFile)
 jclBaseName = os.path.basename(jclPath)
 outputPath  = os.path.dirname(jclPath) + "/" + jclBaseName + ".job"
 
