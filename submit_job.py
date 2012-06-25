@@ -27,22 +27,25 @@ import re, os, sys, time, argparse, ConfigParser, getpass
 # Function generateConfig
 # Quick way to generate a config file.
 def generateConfig(path):
-   config = ConfigParser.RawConfigParser()
-
    
+   # Create new config object
+   config = ConfigParser.RawConfigParser()
+   
+   # Obtain needed config values from stdin
    server = raw_input("Host [zos.kctr.marist.edu]: ")
    if server == "":
       server = 'zos.kctr.marist.edu'
 
-      
    username = raw_input("User ID: ")
    password = getpass.getpass("Password (written plaintext): ")
-      
+   
+   # Add to config object
    config.add_section(conf_sect)
    config.set(conf_sect, 'server', server)
    config.set(conf_sect, 'username', username)
    config.set(conf_sect, 'password', password)
-      
+   
+   # Write config to file
    with open(try_path, 'wb') as configfile:
       config.write(configfile)
 
@@ -131,7 +134,7 @@ try:
    ftp.sendcmd("SITE FILETYPE=jes")
 
    # Attempt to upload the file
-   print "Sending " + jclPath + " to the job entry spooler... "
+   print "Sending " + jclBaseName + " to the job entry spooler... "
    storResult = ftp.storlines("STOR "+jclBaseName, jclFile)
    
    
