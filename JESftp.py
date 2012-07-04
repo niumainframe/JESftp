@@ -22,6 +22,7 @@ class JESftp:
    _conf_paths     = (os.path.expanduser('~'), sys.path[0])
    _conf_sect      = "JESftp"
    _default_server = "zos.kctr.marist.edu"
+   _newline        = '\n'
    
    
    
@@ -30,6 +31,10 @@ class JESftp:
       self.server   = server
       self.username = username
       self.password = password
+      
+      # Change newline character if we're on Windows
+      if os.name == 'nt':
+          self._newline = '\r\n'
       
       if configfile != None:
          self.loadConfig(configfile)
@@ -86,7 +91,6 @@ class JESftp:
       
       # Attempt to upload the file
       with open(file, 'r') as jclFile:
-         print "Sending " + jclBaseName + " to the job entry spooler... "
          storResult = self.ftp.storlines("STOR "+jclBaseName, jclFile)
       
       
@@ -95,7 +99,7 @@ class JESftp:
       jobpos = re.search("JOB[0-9]+", storResult)
       
       if jobpos == None:
-         raise JESftpError("submitJob: file not accepted by JES" + '\n' + storResult)
+         raise JESftpError("submitJob: file not accepted by JES" + self._newline + storResult)
 
       JOBID = storResult[jobpos.start():jobpos.end()]
 
@@ -121,7 +125,7 @@ class JESftp:
       with open(outfile, 'wb') as outputFile:   
          # This lambda is a hack to make sure a newline character is written at the end of each line.
          # I imagine this may be a problem if using an editor that doesn't use \n
-         self.ftp.retrlines("RETR "+JOBID+".x", lambda line: outputFile.write('%s\n' % line))
+         self.ftp.retrlines("RETR "+JOBID+".x", lambda line: outputFile.write(line + self._newline))
          
       
       
@@ -137,7 +141,10 @@ class JESftp:
       self.ftp.delete(JOBID);
       
 
-
+   def processOutput(self, infile, splitPages=False):
+       '''TODO: Processes the carriage control characters in the output.'''
+       
+       pass
 
    def processJob(self, infile, outfile=None):
       '''Sends a JCL file to the JES, waits for the job to complete, 
@@ -171,10 +178,12 @@ class JESftp:
       
       
       # Submit file
+      print "Sending " + infileBN + " to the job entry spooler."
       JOBID = self.submitJob(infile)
       
 
       # Wait a moment for the mainframe to process the file
+      print "Waiting for completion of " + JOBID + "..."
       time.sleep(1)
       
       
@@ -183,6 +192,7 @@ class JESftp:
       
          try:
             self.retrieveJob(JOBID, outfile)
+            print "Downloaded " + JOBID + " to " + outfileBN
             break
             
          except error_perm as e:
