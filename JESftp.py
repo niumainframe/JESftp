@@ -1,5 +1,5 @@
 from ftplib import FTP, Error, error_perm
-import re, os, sys, time, argparse, ConfigParser, getpass
+import re, os, sys, time, ConfigParser, getpass
 
 class JESftpError(Exception): pass
 
@@ -16,10 +16,10 @@ class JESftp:
    connected    = False
    
    # Constants
-   _outfile_ext    = "job"
+   _outfile_ext    = "txt"
    
    _conf_filename  = ".JESftp.cfg"
-   _conf_paths     = (os.getenv("HOME"), sys.path[0])
+   _conf_paths     = (os.path.expanduser('~'), sys.path[0])
    _conf_sect      = "JESftp"
    _default_server = "zos.kctr.marist.edu"
    
@@ -215,9 +215,12 @@ class JESftp:
                filename = try_path
                break
          
-         if filename == None:
+         if filename == None and createOnFail == False:
             raise JESftpError("loadConfig: could not find a config file.")
-               
+         elif filename == None and createOnFail == True:
+            self.createConfig(try_path)
+            filename = try_path
+             
       
       
       # Attempt to read config file.
@@ -323,20 +326,34 @@ def changeExt(fname, ext):
       
 #######################################################################
 
-try:
-   
-   with JESftp() as jes:
-      
-      jes.loadConfig()
-      jes.connect()
-      #jes.processJob("")
-      
-   
-except JESftpError as e:
-   print e
+if __name__ == '__main__':
+    
+    import argparse
+    
+    # Parse command line arguments
 
-except IOError as e:
-   print e
-   
-   
+    parser = argparse.ArgumentParser()
+    parser.add_argument("JCLFile", help="The JCL file to send")
+    args = parser.parse_args()
+
+
+    # I/O files
+    jclPath     = os.path.abspath(args.JCLFile)
+    
+    try:
+
+       with JESftp() as jes:
+          
+          jes.loadConfig(createOnFail=True)
+          jes.connect()
+          jes.processJob(jclPath)
+          
+       
+    except JESftpError as e:
+       print e
+
+    except IOError as e:
+       print e
+       
+       
 # END
