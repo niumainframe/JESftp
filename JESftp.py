@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 from ftplib import FTP, Error, error_perm
 import re, os, sys, time, ConfigParser, getpass
 
