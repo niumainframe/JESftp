@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 from ftplib import FTP, Error, error_perm
 import re, os, sys, time, ConfigParser, getpass
 
@@ -143,14 +141,72 @@ class JESftp:
       self.ftp.delete(JOBID);
       
 
-   def processOutput(self, infile, splitPages=False):
-       '''TODO: Processes the carriage control characters in the output.'''
+   def processJobOutput(self, infile, splitPages=False):
+       '''Reads output from a job and processes the control characters.
+          I am uncertain on how accurate this is.
+          
+          infile
+            The path of the file to process.
+          
+          [splitPages]
+            Flag which indicates that a new file should be made for every page.
+          '''
+   
+       infile_path  = os.path.abspath(infile)
+       infile_baseName = os.path.basename(infile)
        
-       pass
+       pages    = []   # Each item in this list is a page.
+       page_no  = 0;
+
+       with open(infile, 'r') as jcl:
+           
+           line = jcl.readline()
+           
+           # Loop through the document reading all the lines.
+           while line != "":
+                
+               # New Page
+               if line[0] == '1':
+                    pages.append("")
+                    page_no += 1
+                    
+                
+                # Double Spacing
+               if line[0] == '0':
+                   pages[page_no-1] += self._newline
+                
+                # Triple Spacing
+               if line[0] == '-':
+                   pages[page_no-1] += self._newline + self._newline
+               
+               # Truncate the first character off of each line when writing to the page. 
+               pages[page_no-1] += line[1:len(line)]
+                   
+               line = jcl.readline()
+       
+       
+       # Determine method (all one file || split by pages), then write output.
+       outfile_path_noprefix = os.path.dirname(infile_path) + '/' + infile_baseName.split('.')[0]
+       
+       if splitPages == True:
+           cnt = 0
+           for pg in pages:
+               cnt += 1
+               with open(outfile_path_noprefix + "-pg" + str(cnt) + ".txt", 'w') as out:
+                   out.write(pg)
+                   
+       else:
+           with open(outfile_path_noprefix + "-pp.txt", 'w') as out:
+               for pg in pages:
+                   out.write(pg)
+               
+           
 
    def processJob(self, infile, outfile=None):
       '''Sends a JCL file to the JES, waits for the job to complete, 
          retrieves job file, deletes job off the mainframe.
+         
+         Returns the name of the outfile.
       
       infile
          The JCL file to be sent.
@@ -209,6 +265,8 @@ class JESftp:
       self.deleteJob(JOBID)
       print "Deleted " + JOBID
       
+      
+      return outfile
    
    def loadConfig(self, filename=None, createOnFail=False):
       '''Reads connection information from a config file.
@@ -345,12 +403,17 @@ if __name__ == '__main__':
     # Parse command line arguments
 
     parser = argparse.ArgumentParser()
+    parser.add_argument("-o", metavar="outfile", help="the outfile", default=None)
+    parser.add_argument("--postproc", action="store_true", 
+                         help="Do additonal processing on the job output.",
+                         default=False)
     parser.add_argument("JCLFile", help="The JCL file to send")
     args = parser.parse_args()
 
 
     # I/O files
     jclPath     = os.path.abspath(args.JCLFile)
+    outfile     = args.o
     
     try:
 
@@ -358,8 +421,10 @@ if __name__ == '__main__':
           
           jes.loadConfig(createOnFail=True)
           jes.connect()
-          jes.processJob(jclPath)
+          outfile = jes.processJob(jclPath, outfile)
           
+          if args.postproc == True:
+              jes.processJobOutput(outfile)
        
     except JESftpError as e:
        print e
