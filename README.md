@@ -9,7 +9,7 @@ flexible workflow when writing and debugging assembler programs on a remote main
 
 ###Example Usage
     
-    $ python JESftp.py assign3.jcl
+    $ JESftp.py assign3.jcl
   
 The above will automatically do the following:
 
@@ -22,7 +22,13 @@ It also creates/reads a config file with your credientials so that you don't hav
 **If using on a shared machine (like NIU's turing and hopper) please 
 make sure to set the access rights of the generated config file so that only you can read it.**
 
+###Quick install on department servers (or other unix systems)
+Simply run this command in your terminal:
 
+      wget https://raw.github.com/scvnc/JESftp/master/JESftp-install.sh -q -O - | bash
+
+This will download the latest version of JESftp.py and place it in your ~/bin directory.
+After that, it will work as a command for your user.
 
 ###Important Notes for student use
 *  **Make sure that you are using spaces instead of tabs.**  
