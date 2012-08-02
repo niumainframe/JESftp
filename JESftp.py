@@ -353,7 +353,10 @@ class JESftp:
       with open(path, 'wb') as configfile:
          config.write(configfile)
          print "Config file written to " + path
-
+      
+      if os.name != 'nt':
+         os.chmod(path,0600)
+         print "Config file permissions changed to 0600"
       
       self.username = username
       self.password = password
