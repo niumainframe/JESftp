@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from ftplib import FTP, Error, error_perm
 import re, os, sys, time, ConfigParser, getpass
 
@@ -17,6 +19,7 @@ class JESftp:
    
    # Constants
    _outfile_ext    = "txt"
+   _outfile_pfx    = "-output"
    
    _conf_filename  = ".JESftp.cfg"
    _conf_paths     = (os.path.expanduser('~'), sys.path[0])
@@ -226,7 +229,7 @@ class JESftp:
       
       
       if outfile == None:
-         outfile = os.path.dirname(infile) + "/" + changeExt(infileBN, self._outfile_ext)
+         outfile = os.path.dirname(infile) + "/" + changeExt(infileBN, self._outfile_ext, self._outfile_pfx)
       else: 
          outfile = os.path.abspath(outfile)
          
@@ -365,31 +368,47 @@ class JESftp:
       
 #######################################################################
 
-def changeExt(fname, ext):
+def changeExt(fname, ext, prefix=None):
    '''Changes the extension of a filename string to something else.
       
       fname
-         The string of the filename
+         The string of the filename (base name, like file.jcl)
       
       ext
-         The extension (no dots) 
+         The extension (no dots)
+      
+      DEFINITIONS
+      
+      base(path)name -> { bananas.jcl.txt }
+                          ^        ^   ^ replaced extension
+                          ^        ^
+                          ^        ^ extension(s)
+                          ^ filename
    ''' 
    
-   extSplit = fname.split('.')
-   parts    = len(extSplit)
+   # Split the basename into parts delimited by .
+   basename_parts = fname.split('.')
    
-   if parts == 1:
-      result = fname + '.'
-   else:
-      result = ""
+   parts = len(basename_parts)
+   result = ''
+
+   # Add prefix to filename if needed
+   if prefix != None:
+       basename_parts[0] += prefix
+   
+   # Chop off the extension if it exists.
+   if parts >= 2:
+       basename_parts.pop()
+       
+   # String together the basename parts.
+   for i in range(0, len(basename_parts)):
+      result += basename_parts[i] + '.'
    
    
-   
-   for i in range(0, parts-1):
-      result += extSplit[i] + '.'
-   
-   
+   # Add desired extension
    result = result + ext
+   
+   
    return result
       
 
