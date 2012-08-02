@@ -239,7 +239,7 @@ class JESftp:
       
       
       # Submit file
-      print "Sending " + infileBN + " to the job entry spooler."
+      print "Sending " + infileBN + " to the job entry subsystem."
       JOBID = self.submitJob(infile)
       
 
