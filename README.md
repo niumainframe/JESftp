@@ -19,16 +19,13 @@ The above will automatically do the following:
 
 It also creates/reads a config file with your credientials so that you don't have to type them in.  It looks in your home directory or the directory of the script for this file.
 
-**If using on a shared machine (like NIU's turing and hopper) please 
-make sure to set the access rights of the generated config file so that only you can read it.**
-
 ###Quick install on department servers (or other unix systems)
 Simply run this command in your terminal:
 
       wget https://raw.github.com/scvnc/JESftp/master/JESftp-install.sh -q -O - | bash
 
 This will download the latest version of JESftp.py and place it in your ~/bin directory.
-After that, it will work as a command for your user.
+After that, it will work as a command for your user.  You may have to relogin to your terminal.
 
 ###Important Notes for student use
 *  **Make sure that you are using spaces instead of tabs.**  
@@ -43,14 +40,7 @@ editors such as Geany and Gedit that will display an error message. You can open
 editor such as vi and the unknown characters will be represented.  An example of this is if you try to print a field
 of encoded characters, but overshoot the boundry and start printing packed decimal encoded bytes too... this will cause problems.
 
-*  **Overwriting source files.**  
-   When editing on the mainframe, it's not uncommon to simply call your file without an extension (such as ASSIGN5.)
-   Some students may change the extension of this file to .txt so that it is associated with the text editor on their
-   systems. This may be problematic because the default behavior of this script is to save the output to FILENAME.txt,
-   and doing so would overwrite the input file which is similarly named.  I suggest saving your code with another extension
-   (filename.jcl for example) and associating the filetype with your editor-- or leaving your source file extensionless.
-
 
 ###Other Notes
 I like to bind it to the F5 button on [Geany](http://www.geany.org/) for quick feedback.
-It's rough around the edges with cross platform compatibility-- mostly with line endings and home directory paths.
+Cross platform compatability has been tested between Windows and Linux and should have no problems on Mac.
