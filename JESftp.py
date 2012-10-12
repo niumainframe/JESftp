@@ -368,6 +368,53 @@ class JESftp:
       '''Closes connections that this object may be connected to.'''
       self.ftp.close()
       
+
+#######################################################################
+
+            
+def commentLines(inFileObj, outFileObj):
+    '''Replaces blank lines wit the correct comment symbol so 
+       that the assembler will ignore the line.  Takes File objects.
+       
+       inFileObj
+            File object to read lines from.
+            
+       outFileObj
+            File object to store lines to.
+    
+    '''
+    
+    # Default comment symbol.
+    cmnt = "*"
+    
+    # Matches blank line.
+    blank_line = re.compile("^ *$")
+    
+    # Matches the start and end of a MACRO section
+    macro_start = re.compile("^ *MACRO *$")
+    macro_end = re.compile("^ *MEND *$")
+    
+    
+    
+
+    for line in inFileObj:
+            
+        if (blank_line.search(line) != None):
+            outFileObj.write(cmnt + '\n')
+                
+        else:
+            
+            # Change the comment symbol if in a MACRO.
+            if (macro_start.search(line) != None):
+                cmnt = ".*"
+            
+            elif (macro_end.search(line) != None):
+                cmnt = "*"
+            
+
+            # Write out the line.
+            outFileObj.write(line)
+            
       
 #######################################################################
 
