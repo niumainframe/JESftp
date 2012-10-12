@@ -83,7 +83,12 @@ class JESftp:
    
    
    def submitJob(self, file):
-      '''Sends a JCL file to the JES on the connected server.'''
+      '''Sends a JCL file to the JES on the connected server.
+         
+         file
+            This can either be a pathname or an object that has
+            the readline() interface.
+      '''
       
       if self.connected == False :
          raise JESftpError("submitJob: not connected")
@@ -128,17 +133,24 @@ class JESftp:
             The name of the job.  Example: JOB01002
          
          outfile
-            The file to save to.
+            The file to save to or an object with the write() interface.
       
-         TODO: separate job output
       '''
       if self.connected == False :
          raise JESftpError("retrieveJob: not connected")
          
-      with open(outfile, 'wb') as outputFile:   
-         # This lambda is a hack to make sure a newline character is written at the end of each line.
-         # I imagine this may be a problem if using an editor that doesn't use \n
-         self.ftp.retrlines("RETR "+JOBID+".x", lambda line: outputFile.write(line + self._newline))
+      # Case: outfile is string / pathname
+      if (type(outfile) is str):   
+         
+          with open(outfile, 'wb') as outputFile:   
+             # This lambda is a hack to make sure a newline character is written at the end of each line.
+             # I imagine this may be a problem if using an editor that doesn't use \n
+             self.ftp.retrlines("RETR "+JOBID+".x", lambda line: outputFile.write(line + self._newline))
+             
+      # Case: outfile is an object with write interface
+      elif (hasattr(outfile, "write")):
+          self.ftp.retrlines("RETR "+JOBID+".x", lambda line: file.write(line + self._newline))
+          
          
       
       
