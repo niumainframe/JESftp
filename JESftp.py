@@ -231,7 +231,7 @@ class JESftp:
       '''Sends a JCL file to the JES, waits for the job to complete, 
          retrieves job file, deletes job off the mainframe.
          
-         Returns the name of the outfile.
+         Returns the generated outfile pathname or the file object.
       
       infile
          The JCL file to be sent.
@@ -245,17 +245,29 @@ class JESftp:
          raise JESftpError("processJob: not connected")
       
       
-      # Determine the correct infile/outfile information
-      infile   = os.path.abspath(infile)
-      infileBN = os.path.basename(infile)
+      
+      # Case: infile is a string / path
+      if (type(infile) is str):
+          
+          # Determine the correct infile/outfile information
+          infile   = os.path.abspath(infile)
+          infileBN = os.path.basename(infile)
+          
+          
+          if outfile == None:
+             outfile = os.path.dirname(infile) + "/" + changeExt(infileBN, self._outfile_ext, self._outfile_pfx)
+          else: 
+             outfile = os.path.abspath(outfile)
+             
+          outfileBN = os.path.basename(outfile)
       
       
-      if outfile == None:
-         outfile = os.path.dirname(infile) + "/" + changeExt(infileBN, self._outfile_ext, self._outfile_pfx)
-      else: 
-         outfile = os.path.abspath(outfile)
-         
-      outfileBN = os.path.basename(outfile)
+      # Case: infile is file object
+      elif (hasattr(infile, "readline")):
+          
+          # Just verify that outfile is also defined.
+          if(outfile == None):
+             raise JESftpError("processJob: if infile is a file object, outfile must be given.")
       
       
       
@@ -292,6 +304,7 @@ class JESftp:
       
       
       return outfile
+   
    
    def loadConfig(self, filename=None, createOnFail=False):
       '''Reads connection information from a config file.
