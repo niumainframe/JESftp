@@ -88,14 +88,24 @@ class JESftp:
       if self.connected == False :
          raise JESftpError("submitJob: not connected")
       
+      #
+      # Attempt to upload the file stream.
+      #
       
-      jclPath     = os.path.abspath(file)
-      jclBaseName = os.path.basename(jclPath)
+      # Case: file is a pathname.
+      if (type(file) is str):
+
+          with open(file, 'r') as jclfile:
+             jclPath     = os.path.abspath(file)
+             jclBaseName = os.path.basename(jclPath)
+             storResult = self.ftp.storlines("STOR "+jclBaseName, jclfile)
       
-      # Attempt to upload the file
-      with open(file, 'r') as jclFile:
-         storResult = self.ftp.storlines("STOR "+jclBaseName, jclFile)
+      # Case: file has the readline interface.
+      elif(hasattr(file, "readline")):
+          storResult = storResult = self.ftp.storlines("STOR "+"istream", jclfile)
       
+      else:
+        raise JESftpError("submitJob: could not handle the file argument")
       
       
       # Extract the JOB id from the response code
