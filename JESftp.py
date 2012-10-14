@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from ftplib import FTP, Error, error_perm
+from StringIO import StringIO
 import re, os, sys, time, ConfigParser, getpass
 
 class JESftpError(Exception): pass
@@ -18,8 +19,6 @@ class JESftp:
    connected    = False
    
    # Constants
-   _outfile_ext    = "txt"
-   _outfile_pfx    = "-output"
    
    _conf_filename  = ".JESftp.cfg"
    _conf_paths     = (os.path.expanduser('~'), sys.path[0])
@@ -96,18 +95,21 @@ class JESftp:
       #
       # Attempt to upload the file stream.
       #
-      
+
       # Case: file is a pathname.
       if (type(file) is str):
 
           with open(file, 'r') as jclfile:
+          
              jclPath     = os.path.abspath(file)
              jclBaseName = os.path.basename(jclPath)
+             
              storResult = self.ftp.storlines("STOR "+jclBaseName, jclfile)
+      
       
       # Case: file has the readline interface.
       elif(hasattr(file, "readline")):
-          storResult = storResult = self.ftp.storlines("STOR "+"istream", jclfile)
+          storResult = storResult = self.ftp.storlines("STOR "+"istream", file)
       
       else:
         raise JESftpError("submitJob: could not handle the file argument")
@@ -149,7 +151,7 @@ class JESftp:
              
       # Case: outfile is an object with write interface
       elif (hasattr(outfile, "write")):
-          self.ftp.retrlines("RETR "+JOBID+".x", lambda line: file.write(line + self._newline))
+          self.ftp.retrlines("RETR "+JOBID+".x", lambda line: outfile.write(line + '\n'))
           
          
       
@@ -231,7 +233,6 @@ class JESftp:
       '''Sends a JCL file to the JES, waits for the job to complete, 
          retrieves job file, deletes job off the mainframe.
          
-         Returns the generated outfile pathname or the file object.
       
       infile
          The JCL file to be sent.
@@ -245,35 +246,30 @@ class JESftp:
          raise JESftpError("processJob: not connected")
       
       
+
+
+
+      filenames = getFilenames(infile.name)
       
-      # Case: infile is a string / path
-      if (type(infile) is str):
-          
-          # Determine the correct infile/outfile information
-          infile   = os.path.abspath(infile)
-          infileBN = os.path.basename(infile)
-          
-          
-          if outfile == None:
-             outfile = os.path.dirname(infile) + "/" + changeExt(infileBN, self._outfile_ext, self._outfile_pfx)
-          else: 
-             outfile = os.path.abspath(outfile)
-             
-          outfileBN = os.path.basename(outfile)
+      # Verify that outfile is also defined.
+      if(outfile == None):
+         raise JESftpError("processJob: if infile is a file object, outfile must be given.")
+        
       
       
-      # Case: infile is file object
-      elif (hasattr(infile, "readline")):
-          
-          # Just verify that outfile is also defined.
-          if(outfile == None):
-             raise JESftpError("processJob: if infile is a file object, outfile must be given.")
+      # Determine the correct infile/outfile information
+      '''
+      infile    = filenames['in_path']
+      infileBN  = filenames['in_base']
+      
+      outfile   = filenames['out_path']
+      outfileBN = filenames['out_base']'''
       
       
       
       
       # Submit file
-      print "Sending " + infileBN + " to the job entry subsystem."
+      print "Sending", filenames['in_base'], "to the JES."
       JOBID = self.submitJob(infile)
       
 
@@ -281,13 +277,13 @@ class JESftp:
       print "Waiting for completion of " + JOBID + "..."
       time.sleep(1)
       
-      
+         
       # Take four attempts at retrieving the job.
       for i in range(0,4):
       
          try:
             self.retrieveJob(JOBID, outfile)
-            print "Downloaded " + JOBID + " to " + outfileBN
+            print "Retrieved " + JOBID
             break
             
          except error_perm as e:
@@ -297,13 +293,11 @@ class JESftp:
             print ""
             self.ftp.retrlines("LIST " + JOBID)
             time.sleep(5)
-      
+            
       # Delete the job
       self.deleteJob(JOBID)
-      print "Deleted " + JOBID
+      print "Deleted " + JOBID +" off the remote host."
       
-      
-      return outfile
    
    
    def loadConfig(self, filename=None, createOnFail=False):
@@ -402,13 +396,88 @@ class JESftp:
    def closeConnections(self):
       '''Closes connections that this object may be connected to.'''
       self.ftp.close()
-      
+   
+    
+class StreamProcessorChain:
+    '''Maintains a collection of functions that take an input file
+       and produces a processed output file.
+       
+    '''
+    _processors = list()
+    _log    = False
+    
+    
+    def __init__(self, log=False):
+        self._log = log
+            
+    
+    def __call__(self, infile, outfile):
+        
+        
+        # Preserve the names of the infile and outfile
+        # or ensure that the file objects have this data member.
+        
+        if hasattr(infile, "name"):
+            infile_name = infile.name
+        else:
+            infile_name = None
+            infile.name = None
+            
+            
+        if hasattr(outfile, "name"):
+            outfile_name = outfile.name
+        else:
+            outfile_name = None
+            outfile.name = None
+            
+        
+        #
+        # Begin looping through the processor chain
+        #
+        
+        for process in self._processors:
+        
+            # Make a new output buffer
+            outbuffer = StringIO()
+            outbuffer.name = outfile_name
+            
+            # Rewind infile
+            infile.seek(0)
+            
+            # Do the processing
+            process(infile, outbuffer)
+            
+            
+            if self._log == True:
+ 
+                with open(changeExt(os.path.basename(infile_name),prefix="-"+process.func_name),'w') as log:
+                    log.write(outbuffer.getvalue())
+            
+            
+            
+            # Make the output the new input for the next processor.
+            infile = outbuffer
+            infile.name = infile_name
+            
+            
+        # Done Processing. Write out the resulting output to our real destination.
+        outfile.write(outbuffer.getvalue())
+            
+            
 
+    def append(self, function):
+        ''' Adds a function that takes two file objects (infile, outfile)
+            to the processing chain.
+        '''
+
+        self._processors.append(function)
+        
+        
 #######################################################################
 
             
 def commentLines(inFileObj, outFileObj):
-    '''Replaces blank lines wit the correct comment symbol so 
+    '''Replaces blank lines with the correct comment symbol so 
        that the assembler will ignore the line.  Takes File objects.
        
        inFileObj
@@ -451,9 +520,10 @@ def commentLines(inFileObj, outFileObj):
             outFileObj.write(line)
             
       
+      
 #######################################################################
 
-def changeExt(fname, ext, prefix=None):
+def changeExt(fname, ext=None, prefix=None):
    '''Changes the extension of a filename string to something else.
       
       fname
@@ -483,12 +553,14 @@ def changeExt(fname, ext, prefix=None):
    
    # Chop off the extension if it exists.
    if parts >= 2:
-       basename_parts.pop()
+       old_ext = basename_parts.pop()
        
    # String together the basename parts.
    for i in range(0, len(basename_parts)):
       result += basename_parts[i] + '.'
    
+   if (ext == None):
+      ext = old_ext
    
    # Add desired extension
    result = result + ext
@@ -497,7 +569,49 @@ def changeExt(fname, ext, prefix=None):
    return result
       
 
+def getFilenames(infile, outfile=None, outfile_pfx="-output", outfile_ext="txt"):
+      '''Given an absolute or relative filename, this returns 
+         a dictionary containing the absolute and base filenames
+         
+         If outfile is not provided, it will generate an outfile based
+         upon the input file.  The applied prefix and extension can
+         be changed using the keyword arguments.
+
+         infile
+            The filename of input 
+            
+         outfile (optional)
+            The filename of output
+         
+         outfile_pfx
+            The prefix added to the outfile name
+            Example: When infile = program.jcl and outfile_pfx = "-out"
+                          out_base = program-out.jcl
+            Defaults to "-output"
+         
+         outfile_ext
+            The extension of the outfile name
+            Example: When infile = program.jcl and outfile_ext = "txt"
+                          out_base = program.txt
+            Defaults to "txt"
+                     
+      '''
+      # Determine the correct infile/outfile information
+      infile   = os.path.abspath(infile)
+      infileBN = os.path.basename(infile)
+                 
+      if outfile == None:
+         outfile = os.path.dirname(infile) + "/" + changeExt(infileBN, outfile_ext, outfile_pfx)
+      else: 
+         outfile = os.path.abspath(outfile)
+         
+      outfileBN = os.path.basename(outfile)
       
+      return { 'in_path': infile, 
+               'in_base': infileBN, 
+               'out_path': outfile, 
+               'out_base': outfileBN }     
+                   
 #######################################################################
 
 if __name__ == '__main__':
@@ -516,25 +630,49 @@ if __name__ == '__main__':
 
 
     # I/O files
+    filenames = getFilenames(args.JCLFile, args.o)
+    
+    '''
     jclPath     = os.path.abspath(args.JCLFile)
     outfile     = args.o
+    '''
     
-    try:
+    processor = StreamProcessorChain()
+    
+    #importlib.import_module("JESftp")
+    
+    processor.append(commentLines)
+    
+    
+    
+    with open(filenames['in_path'], 'r') as jclPath:
+        
+        processed_infile = StringIO(jclPath.read())
+        
+        
+        with open(filenames['out_path'], 'wb') as outfile:
+            
+    
+            try:
 
-       with JESftp() as jes:
-          
-          jes.loadConfig(createOnFail=True)
-          jes.connect()
-          outfile = jes.processJob(jclPath, outfile)
-          
-          if args.postproc == True:
-              jes.processJobOutput(outfile)
-       
-    except JESftpError as e:
-       print e
+               with JESftp() as jes:
+                  
+                  jes.loadConfig(createOnFail=True)
+                  jes.connect()
+                  
+                  processor.append(jes.processJob)
+                  processor(jclPath, outfile)
+                  
+                  
+                  
+                  if args.postproc == True:
+                      jes.processJobOutput(outfile)
+               
+            except JESftpError as e:
+               print e
 
-    except IOError as e:
-       print e
-       
-       
+            except IOError as e:
+               print e
+           
+           
 # END
