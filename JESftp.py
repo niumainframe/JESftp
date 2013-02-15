@@ -426,6 +426,11 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-o", metavar="outfile", help="the outfile", default=None)
+    
+    parser.add_argument("--config", metavar="config_file", 
+                        help="Read config from the specified file.", 
+                        default=None)
+                        
     parser.add_argument("--postproc", action="store_true", 
                          help="Do additonal processing on the job output.",
                          default=False)
@@ -441,7 +446,7 @@ if __name__ == '__main__':
 
        with JESftp() as jes:
           
-          jes.loadConfig(createOnFail=True)
+          jes.loadConfig(createOnFail=True, filename=args.config)
           jes.connect()
           outfile = jes.processJob(jclPath, outfile)
           
