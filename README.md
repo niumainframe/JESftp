@@ -44,3 +44,16 @@ of encoded characters, but overshoot the boundry and start printing packed decim
 ###Other Notes
 I like to bind it to the F5 button on [Geany](http://www.geany.org/) for quick feedback.
 Cross platform compatability has been tested between Windows and Linux and should have no problems on Mac.
+
+Looking back, the module is suffering from a case of bad class cohesion.
+
+Licensed under the GNU General Public License.
+
+### Alternative implemenations
+
+[MVSTool] (https://github.com/john-charles/MVSTool) Another student implementation in Java.
+
+[MVS::JESFTP] (http://search.cpan.org/~mikeo/MVS-JESFTP-1.1/JESFTP.pm) Implementation in perl.
+
+[IBM Java Example] (http://www.ibm.com/developerworks/systems/library/es-batch-zos.html)
+
