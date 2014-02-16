@@ -66,7 +66,18 @@ class JESftp:
          self.password = password
       
       
-      self.ftp.connect(self.server)
+      # Parse connection string
+      conn_str  = self.server.split(':')
+      if len(conn_str) > 1:
+         self.server = conn_str[0]
+         self.port = conn_str[1]
+      else:
+        self.server = conn_str[0]
+        self.port = 22
+      ##
+      
+      
+      self.ftp.connect(self.server, self.port)
       self.ftp.login(self.username, self.password)
       
       # Tell that we're trying to upload directly to the job entry subsystem
