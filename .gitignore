@@ -1,5 +1,5 @@
 *.py[co]
-
+.JESftp.cfg
 # Packages
 *.egg
 *.egg-info
