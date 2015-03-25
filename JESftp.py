@@ -73,7 +73,7 @@ class JESftp:
          self.port = conn_str[1]
       else:
         self.server = conn_str[0]
-        self.port = 22
+        self.port = 21
       ##
       
       
